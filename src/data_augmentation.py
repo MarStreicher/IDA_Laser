@@ -13,3 +13,10 @@ dataloader = DataLoader(dataset, batch_size=32, shuffle=True)
 
 for inputs, labels in dataloader:
     print(inputs.shape, labels.shape)
+
+
+dataset = MatDataset(mat_dict, input_key = "X", label_key = "Y", feature_engineering='r2')
+dataloader = DataLoader(dataset, batch_size=32, shuffle=True)
+
+for inputs, labels in dataloader:
+    print(inputs.shape, labels.shape)

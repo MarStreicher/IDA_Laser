@@ -14,7 +14,14 @@
 
 # Nett to know
 
+## Python
+
 - Dunder methods: def __len__(self):
 - Dunder methods allow me to define behaviour for built-in operatiions and functions in a class.
+
+## Statistic
+
+**Formula R squared**
+![Formula R squared](images/formula_R_squared.png)
 
 
