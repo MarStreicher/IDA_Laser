@@ -1,6 +1,6 @@
 import numpy as np
 
-class Helper():
+class DecisionTreeHelper():
     def __init__(self):
         pass
 
@@ -30,8 +30,8 @@ class Helper():
         """Calculate the conditional entropy for one feature with continious values."""
         
         results = {
-        'inputs_above_threshold': Helper.calculate_entropy(labels[inputs > threshold]),
-        'inputs_below_threshold': Helper.calculate_entropy(labels[inputs <= threshold])
+        'inputs_above_threshold': DecisionTreeHelper.calculate_entropy(labels[inputs > threshold]),
+        'inputs_below_threshold': DecisionTreeHelper.calculate_entropy(labels[inputs <= threshold])
         }
             
         return results
@@ -53,10 +53,10 @@ class Helper():
             group_size = len(group)
             if group_size > 0:
                 p = group_size/total
-                conditional_entropy = Helper.calculate_entropy(group)
+                conditional_entropy = DecisionTreeHelper.calculate_entropy(group)
                 weighted_conditional_entropy -= p*conditional_entropy
 
-        entropy = Helper.calculate_entropy(labels)
+        entropy = DecisionTreeHelper.calculate_entropy(labels)
 
         information_gain = 0.0
         information_gain = entropy + weighted_conditional_entropy
@@ -81,7 +81,7 @@ class Helper():
         best_threshold = 0.0
 
         for i,value in enumerate(thresholds):
-            information_gain = Helper.calculate_continous_information_gain(labels, inputs, threshold=value)
+            information_gain = DecisionTreeHelper.calculate_continous_information_gain(labels, inputs, threshold=value)
             information_gains[i] = information_gain
 
             if information_gain > best_information_gain:
