@@ -1,8 +1,10 @@
 import torch
 import numpy as np
-from torch.utils.data import Dataset
+from torch.utils.data import Dataset, random_split, Subset
 from sklearn.linear_model import LinearRegression
 from sklearn.metrics import r2_score
+import pickle
+import os
 
 class BaseDataset(Dataset):
     def __init__(self, mat_data, input_key, label_key = None):
@@ -13,7 +15,38 @@ class BaseDataset(Dataset):
         """
         self.inputs = mat_data[input_key]
         self.labels = mat_data[label_key] if label_key else None
-    
+
+        train_size = int(0.8*len(self.inputs))
+        test_size = len(self.inputs)-train_size
+
+        file_path = '/Users/marleenstreicher/Documents/git/IDA_Laser/IDA_Laser/data_split_indices.pkl'
+        print(f"Checking path: {file_path}")
+        print(f"Path exists: {os.path.exists(file_path)}")       
+        if os.path.exists('/Users/marleenstreicher/Documents/git/IDA_Laser/IDA_Laser/data_split_indices.pkl'):
+            with open(file_path, 'rb') as file:
+                split_data = pickle.load(file)
+
+                self.train_indices = split_data['train_indices']
+                self.test_indices = split_data['test_indices']
+        else:
+            train_dataset, test_dataset = random_split(self.inputs, [train_size, test_size])
+
+            self.train_indices = train_dataset.indices
+            self.test_indices = test_dataset.indices
+
+            with open('data_split_indices.pkl', 'wb') as f:
+                pickle.dump({'train_indices': self.train_indices, 'test_indices': self.test_indices}, f)
+
+        self.train_inputs = self.inputs[self.train_indices]
+        self.test_inputs = self.inputs[self.test_indices]
+
+        if self.labels is not None:
+            self.train_labels = self.labels[self.train_indices]
+            self.test_labels = self.labels[self.test_indices]
+        else:
+            self.train_labels = None
+            self.test_labels = None
+
     def __len__(self):
         """Calculate the length of the input data."""
         return len(self.inputs)
@@ -50,6 +83,9 @@ class FeatureEngineeredDataset(BaseDataset):
             if feature_engineering == 'r2':
                 self.inputs = self.calculate_r2(self.inputs)
 
+                self.train_inputs = self.inputs[self.train_indices]
+                self.test_inputs = self.inputs[self.test_indices]
+
     def calculate_r2(self, input):
         """Calculate R^2 scores for given lasers and a time frame (sec)."""
         time_frame = np.arange(0,60)
@@ -62,5 +98,6 @@ class FeatureEngineeredDataset(BaseDataset):
             r2 = r2_score(time_frame, y_pred)
             r2_scores.append(r2)
         return np.array(r2_scores)
+
 
     

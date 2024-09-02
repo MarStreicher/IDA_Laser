@@ -27,10 +27,10 @@ test_indices = test_dataset.indices
 with open('data_split_indices.pkl', 'wb') as f:
     pickle.dump({'train_indices': train_indices, 'test_indices': test_indices}, f)
 
-train_loader = DataLoader(train_dataset, batch_size=32, shuffle=True)
-test_loader = DataLoader(test_dataset, batch_size=32, shuffle=False)
+# train_loader = DataLoader(train_dataset, batch_size=32, shuffle=True)
+# test_loader = DataLoader(test_dataset, batch_size=32, shuffle=False)
 
-with open('dataloaders.pkl', 'wb') as f:
-    pickle.dump({'train_loader': train_loader, 'test_loader': test_loader}, f)
+# with open('dataloaders.pkl', 'wb') as f:
+#     pickle.dump({'train_loader': train_loader, 'test_loader': test_loader}, f)
 
 torch.manual_seed(42) 
