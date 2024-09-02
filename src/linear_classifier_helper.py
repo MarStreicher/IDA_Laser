@@ -64,13 +64,12 @@ class LinearClassifierHelper():
 
         samples = inputs.shape[0]
 
-        theta = 0.0  
-        theta_new = 0.0
+        theta = np.zeros(1)
+        theta_new = np.zeros(1)
         step = 0
         gradient = 0
         alpha = 0
         euclidean_distance = float('inf')
-
 
         while(euclidean_distance > epsilon):
 
@@ -80,26 +79,31 @@ class LinearClassifierHelper():
             labels = labels[indices]
 
             for i in range(samples):
-                theta = theta_new
                 alpha = LinearClassifierHelper.calculate_stepsize(alpha_0, decay_rate, step)
                 gradient = LinearClassifierHelper.calculate_gradient(inputs[i], labels[i], theta, lambda_value, samples)
 
                 theta_new = theta - alpha*gradient
-
                 euclidean_distance = LinearClassifierHelper.calculate_euclidean_distance(theta, theta_new)
+
+                theta = theta_new
                 step += 1
         
-        return theta_new
+        return theta
     
     @staticmethod
     def predict(inputs, theta):
         """Predict the class labels for a set of inputs using the learned parameter theta."""
 
         raw_predictions = inputs * theta
-        predictions = np.sign(raw_predictions)
-        predictions[predictions == 0] = 1
 
-        return predictions
+        predictions = np.empty_like(raw_predictions)
+        for i,prediction in enumerate(raw_predictions):
+            if prediction >= 0:
+                predictions[i] = 1
+            else:
+                predictions[i] = -1
+
+        return predictions, raw_predictions, inputs, theta
     
     @staticmethod
     def evaluate(predictions, true_labels):

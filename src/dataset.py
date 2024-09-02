@@ -61,19 +61,17 @@ class BaseDataset(Dataset):
             y = None
 
         return x,y if y is not None else x
-
-class FilteredDataset(BaseDataset):
-    def __init__(self, mat_data, input_key, label_key, filter_label = None):
-        super().__init__(mat_data, input_key, label_key)
-        """A dataset class that filters data based on a specific label value."""
-
+    
+    def filter_by_label(self,filter_label = None):
+        """A function that filters data based on a specific label value."""
         if filter_label is not None:
             indices = np.where(self.labels == filter_label)[0]
-            self.inputs = self.inputs[indices]
-            self.labels = self.labels[indices]
+            filtered_inputs = self.inputs[indices]
+            filtered_labels = self.labels[indices] if self.labels is not None else None
+            return filtered_inputs, filtered_labels
         else:
-            raise ValueError("Please provide a label_key and a filter_label.")
-
+            raise ValueError("Please provide a filter_label.")
+        
 class FeatureEngineeredDataset(BaseDataset):
     def __init__(self, mat_data, input_key, label_key = None, feature_engineering = None):
         super().__init__(mat_data, input_key, label_key)
