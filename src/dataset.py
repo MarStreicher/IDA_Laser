@@ -19,10 +19,10 @@ class BaseDataset(Dataset):
         train_size = int(0.8*len(self.inputs))
         test_size = len(self.inputs)-train_size
 
-        file_path = '/Users/marleenstreicher/Documents/git/IDA_Laser/IDA_Laser/data_split_indices.pkl'
+        file_path = '../../data_split_indices.pkl'
         print(f"Checking path: {file_path}")
         print(f"Path exists: {os.path.exists(file_path)}")       
-        if os.path.exists('/Users/marleenstreicher/Documents/git/IDA_Laser/IDA_Laser/data_split_indices.pkl'):
+        if os.path.exists('../../data_split_indices.pkl'):
             with open(file_path, 'rb') as file:
                 split_data = pickle.load(file)
 
@@ -83,6 +83,17 @@ class FeatureEngineeredDataset(BaseDataset):
 
                 self.train_inputs = self.inputs[self.train_indices]
                 self.test_inputs = self.inputs[self.test_indices]
+            
+            if feature_engineering == 'r2+diff':
+                self.inputs_r2 = self.calculate_r2(self.inputs)
+                inputs_diff = self.calculate_consecutive_difference(self.inputs)
+                self.inputs_diff = inputs_diff.flatten()
+                
+                inputs = np.vstack((self.inputs_r2, self.inputs_diff))
+                self.inputs = inputs.T
+
+                self.train_inputs = self.inputs[self.train_indices]
+                self.test_inputs = self.inputs[self.test_indices]
 
     def calculate_r2(self, input):
         """Calculate R^2 scores for given lasers and a time frame (sec)."""
@@ -96,6 +107,11 @@ class FeatureEngineeredDataset(BaseDataset):
             r2 = r2_score(time_frame, y_pred)
             r2_scores.append(r2)
         return np.array(r2_scores)
-
+    
+    def calculate_consecutive_difference(self,input):
+        differences = np.abs(np.diff(input, axis=1))
+        max_differences = np.max(differences, axis=1)
+        max_differences = max_differences.reshape(input.shape[0],1)
+        return max_differences
 
     
