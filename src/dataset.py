@@ -2,6 +2,7 @@ import torch
 import numpy as np
 from torch.utils.data import Dataset, random_split, Subset
 from sklearn.linear_model import LinearRegression
+from sklearn.preprocessing import StandardScaler
 from sklearn.metrics import r2_score
 import pickle
 import os
@@ -78,6 +79,7 @@ class FeatureEngineeredDataset(BaseDataset):
         """A dataset class that applies feature engineering to the input data."""
 
         if feature_engineering is not None:
+            scaler = StandardScaler()
             if feature_engineering == 'r2':
                 self.inputs = self.calculate_r2(self.inputs)
 
@@ -90,7 +92,8 @@ class FeatureEngineeredDataset(BaseDataset):
                 self.inputs_diff = inputs_diff.flatten()
                 
                 inputs = np.vstack((self.inputs_r2, self.inputs_diff))
-                self.inputs = inputs.T
+                inputs = inputs.T
+                self.inputs = scaler.fit_transform(inputs)
 
                 self.train_inputs = self.inputs[self.train_indices]
                 self.test_inputs = self.inputs[self.test_indices]

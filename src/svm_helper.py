@@ -95,10 +95,30 @@ class SvmHelper():
                 minimum = min(table[i-1,j-1], table[i-1,j], table[i,j-1])
                 table[i, j] = distance + minimum
         
-        return table[length_input, length_input_copy]
+        # Bottom right corner of the table
+        dtw_distance = table[length_input, length_input_copy] 
+
+        return dtw_distance
+    
+    @staticmethod
+    def dtw_kernel(input, input_copy):
+        return np.exp(-SvmHelper.d_DTW(input, input_copy, SvmHelper.calculate_euclidean_distance))
+    
+    @staticmethod
+    def polynomial_kernel(input, input_copy, degree=3,alpha=1,c=0):
+        """Polynomial kernel with given degree and scaling factor."""
+        poly_kernel = (alpha*np.dot(input.T, input_copy) + c)**degree
+        return poly_kernel
+    
+    @staticmethod
+    def rbf_kernel(input, input_copy, lbda=1):
+        """Radial Basis Function (Gaussian) kernel."""
+        distance = np.linalg.norm(x - x_prime) ** 2
+        rbf_kernel = np.exp(-lbda*distance)
+        return rbf_kernel
 
     @staticmethod
-    def create_kernel_matrix(kernel_function, inputs, inputs_copy):
+    def create_kernel_matrix(kernel_function, inputs, inputs_copy, **kernel_params):
         """
         Function used to build the kernel matrix out of the given kernel function.
 
@@ -110,14 +130,13 @@ class SvmHelper():
         Returns:
         kernel_matrix: A Gram matrix of kernel values.
         """
-        ###### exponetial and lambda is still missing here
         rows = len(inputs)
         columns = len(inputs_copy)
 
         kernel_matrix = np.empty((rows, columns))
         for i in range(rows):
             for j in range(i, columns):
-                kernel_matrix[i,j] = kernel_function(inputs[i], inputs_copy[j])
+                kernel_matrix[i,j] = kernel_function(inputs[i], inputs_copy[j],**kernel_params)
                 if i < columns and j < rows:
                     kernel_matrix[j, i] = kernel_matrix[i, j]
 
@@ -184,7 +203,7 @@ class SvmHelper():
         plt.show()
 
     @staticmethod
-    def regularised_kernel_erm_batch(inputs, labels, kernel_function, max_iterations=200, epsilon = 0.001, alpha = 1.0, lbda=1, verbose = False, figure = False):
+    def regularised_kernel_erm_batch(inputs, labels, kernel_function, max_iterations=200, epsilon = 0.001, alpha = 1.0, lbda=1, decay=0.9, verbose = False, figure = False, **kernel_params):
         """Function for performing empirical risk minimization by using stochastic gradient descent method."""
 
         if inputs.ndim == 1:
@@ -200,7 +219,7 @@ class SvmHelper():
         theta = np.random.randn(feature_number+1)
 
         if not kernel_function == 'linear':
-            kernel_matrix = SvmHelper.create_kernel_matrix(kernel_function, inputs, inputs)
+            kernel_matrix = SvmHelper.create_kernel_matrix(kernel_function, inputs, inputs, **kernel_params)
             theta = np.random.randn(kernel_matrix.shape[1])
 
         previous_gradients = None
@@ -247,8 +266,8 @@ class SvmHelper():
                 loss_gradients = loss_gradients.flatten()
                 gradient = loss_gradients + regularizer_gradient
 
-            if previous_gradients is not None and not kernel_function == 'linear':
-                alpha = 0.9**iteration
+            if previous_gradients is not None:
+                alpha = decay**iteration
    
             theta = theta_old - alpha*gradient
 
@@ -259,9 +278,8 @@ class SvmHelper():
                 regularizer_history.append(regularizer)
                 distance_history.append(distance)
 
-            if kernel_function == 'linear':
-                if distance < epsilon:
-                    break
+            if distance < epsilon:
+                break
 
             previous_gradients = gradient
         
