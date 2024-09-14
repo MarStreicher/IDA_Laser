@@ -21,8 +21,8 @@ class SvmHelper():
             squared_sum = 0
             for diff in differences:
                 squared_sum += diff ** 2
-                euclidean_distance = squared_sum ** 0.5 #sqrt
-                return euclidean_distance
+            euclidean_distance = squared_sum ** 0.5 #sqrt
+            return euclidean_distance
         else:
             raise TypeError("Both inputs must be either numbers or numpy array.")
 
@@ -113,7 +113,7 @@ class SvmHelper():
     @staticmethod
     def rbf_kernel(input, input_copy, lbda=1):
         """Radial Basis Function (Gaussian) kernel."""
-        distance = np.linalg.norm(x - x_prime) ** 2
+        distance = np.linalg.norm(input - input_copy) ** 2
         rbf_kernel = np.exp(-lbda*distance)
         return rbf_kernel
 
@@ -172,7 +172,7 @@ class SvmHelper():
         return predictions
 
     @staticmethod
-    def plot_metrics(hinge_loss_history, regularizer_history, distance_history):
+    def plot_metrics(hinge_loss_history, regularizer_history, distance_history, selected_kernel='linear'):
         """Plot the metrics collected during training."""
         iterations = range(1, len(hinge_loss_history) + 1)
 
@@ -182,28 +182,28 @@ class SvmHelper():
         plt.plot(iterations, hinge_loss_history, label="Hinge Loss", color="blue")
         plt.xlabel("Iteration")
         plt.ylabel("Hinge Loss")
-        plt.title("Hinge Loss over Iterations")
+        plt.title(f"{selected_kernel} - Hinge Loss over Iterations")
         plt.grid(True)
 
         plt.subplot(3, 1, 2)
         plt.plot(iterations, regularizer_history, label="Regularizer", color="green")
         plt.xlabel("Iteration")
         plt.ylabel("Regularizer")
-        plt.title("Regularizer over Iterations")
+        plt.title(f"{selected_kernel} - Regularizer over Iterations")
         plt.grid(True)
 
         plt.subplot(3, 1, 3)
         plt.plot(iterations, distance_history, label="Distance (theta old - theta new)", color="red")
         plt.xlabel("Iteration")
         plt.ylabel("Distance")
-        plt.title("Euclidean Distance between Theta Updates")
+        plt.title(f"{selected_kernel} - Euclidean Distance between Theta Updates")
         plt.grid(True)
 
         plt.tight_layout()
         plt.show()
 
     @staticmethod
-    def regularised_kernel_erm_batch(inputs, labels, kernel_function, max_iterations=200, epsilon = 0.001, alpha = 1.0, lbda=1, decay=0.9, verbose = False, figure = False, **kernel_params):
+    def regularised_kernel_erm_batch(inputs, labels, kernel_function, max_iterations=100, epsilon = 0.001, alpha = 1.0, lbda=1, decay=0.9, verbose = False, figure = False, **kernel_params):
         """Function for performing empirical risk minimization by using stochastic gradient descent method."""
 
         if inputs.ndim == 1:
@@ -236,10 +236,17 @@ class SvmHelper():
             print(f'Initialised theta: {theta}')
             print(colored('Start training ...', 'green'))
         
-        if figure == True:
-            hinge_loss_history = []
-            regularizer_history = []
-            distance_history = []
+
+        hinge_loss_history = []
+        regularizer_history = []
+        distance_history = []
+
+        result = {
+            'theta': theta,
+            'hinge_loss_history': hinge_loss_history,
+            'regularizer_history': regularizer_history,
+            'distance_history': distance_history,
+        }
 
         for iteration in range(max_iterations):
             theta_old = theta
@@ -293,8 +300,12 @@ class SvmHelper():
         if figure == True:
             SvmHelper.plot_metrics(hinge_loss_history, regularizer_history, distance_history)
 
-        return theta
-    
+        result['theta'] = theta
+        result['hinge_loss_history'] = hinge_loss_history
+        result['regularizer_history'] = regularizer_history
+        result['distance_history'] = distance_history
+
+        return result
 
         
 

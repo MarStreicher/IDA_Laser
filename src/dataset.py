@@ -117,4 +117,19 @@ class FeatureEngineeredDataset(BaseDataset):
         max_differences = max_differences.reshape(input.shape[0],1)
         return max_differences
 
+class AugmentedDataset(BaseDataset):
+    def __init__(self, mat_data, input_key, label_key = None, feature_engineering = None):
+        super().__init__(mat_data, input_key, label_key)
+
+        self.inputs = self.reverse_rows(self.inputs)
+
+        self.train_inputs = self.inputs[self.train_indices]
+        self.test_inputs = self.inputs[self.test_indices]
+
+    def reverse_rows(inputs):
+        for i in len(inputs):
+            inputs[i] = matrix[i][::-1]
+        return inputs
+
+
     
