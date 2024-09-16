@@ -72,8 +72,28 @@ class BaseDataset(Dataset):
             return filtered_inputs, filtered_labels
         else:
             raise ValueError("Please provide a filter_label.")
-        
-class FeatureEngineeredDataset(BaseDataset):
+
+class FeatureUtils:
+    def calculate_r2(self, input):
+        """Calculate R^2 scores for given lasers and a time frame (sec)."""
+        time_frame = np.arange(0,60)
+        r2_scores = []
+        model = LinearRegression()
+        for instance in input:
+            instance_reshaped = instance.reshape(-1, 1)  
+            model.fit(instance_reshaped, time_frame)
+            y_pred = model.predict(instance_reshaped)
+            r2 = r2_score(time_frame, y_pred)
+            r2_scores.append(r2)
+        return np.array(r2_scores)
+    
+    def calculate_consecutive_difference(self,input):
+        differences = np.abs(np.diff(input, axis=1))
+        max_differences = np.max(differences, axis=1)
+        max_differences = max_differences.reshape(input.shape[0],1)
+        return max_differences
+
+class FeatureEngineeredDataset(BaseDataset, FeatureUtils):
     def __init__(self, mat_data, input_key, label_key = None, feature_engineering = None):
         super().__init__(mat_data, input_key, label_key)
         """A dataset class that applies feature engineering to the input data."""
@@ -98,26 +118,8 @@ class FeatureEngineeredDataset(BaseDataset):
                 self.train_inputs = self.inputs[self.train_indices]
                 self.test_inputs = self.inputs[self.test_indices]
 
-    def calculate_r2(self, input):
-        """Calculate R^2 scores for given lasers and a time frame (sec)."""
-        time_frame = np.arange(0,60)
-        r2_scores = []
-        model = LinearRegression()
-        for instance in input:
-            instance_reshaped = instance.reshape(-1, 1)  
-            model.fit(instance_reshaped, time_frame)
-            y_pred = model.predict(instance_reshaped)
-            r2 = r2_score(time_frame, y_pred)
-            r2_scores.append(r2)
-        return np.array(r2_scores)
-    
-    def calculate_consecutive_difference(self,input):
-        differences = np.abs(np.diff(input, axis=1))
-        max_differences = np.max(differences, axis=1)
-        max_differences = max_differences.reshape(input.shape[0],1)
-        return max_differences
 
-class AugmentedDataset(BaseDataset):
+class AugmentedDataset(BaseDataset, FeatureUtils):
     def __init__(self, mat_data, input_key, label_key = None, feature_engineering = None):
         super().__init__(mat_data, input_key, label_key)
 
@@ -126,10 +128,28 @@ class AugmentedDataset(BaseDataset):
         self.train_inputs = self.inputs[self.train_indices]
         self.test_inputs = self.inputs[self.test_indices]
 
-    def reverse_rows(inputs):
-        for i in len(inputs):
-            inputs[i] = matrix[i][::-1]
+        if feature_engineering is not None:
+            scaler = StandardScaler()
+            if feature_engineering == 'r2+diff':
+                self.inputs_r2 = self.calculate_r2(self.inputs)
+                inputs_diff = self.calculate_consecutive_difference(self.inputs)
+                self.inputs_diff = inputs_diff.flatten()
+                
+                inputs = np.vstack((self.inputs_r2, self.inputs_diff))
+                inputs = inputs.T
+                self.inputs = scaler.fit_transform(inputs)
+
+                self.train_inputs = self.inputs[self.train_indices]
+                self.test_inputs = self.inputs[self.test_indices]
+
+    def reverse_rows(self, inputs):
+        for i in range(len(inputs)):
+            inputs[i] = inputs[i][::-1]
         return inputs
+
+
+    
+
 
 
     

@@ -206,6 +206,8 @@ class SvmHelper():
     def regularised_kernel_erm_batch(inputs, labels, kernel_function, max_iterations=100, epsilon = 0.001, alpha = 1.0, lbda=1, decay=0.9, verbose = False, figure = False, **kernel_params):
         """Function for performing empirical risk minimization by using stochastic gradient descent method."""
 
+        np.random.seed(42)
+        
         if inputs.ndim == 1:
             inputs = inputs.reshape(-1, 1)
 
@@ -215,6 +217,7 @@ class SvmHelper():
         samples_number = inputs.shape[0]
         feature_number = inputs.shape[1]-1
         column_number = inputs.shape[1]
+
 
         theta = np.random.randn(feature_number+1)
 
@@ -280,10 +283,9 @@ class SvmHelper():
 
             distance = SvmHelper.calculate_euclidean_distance(theta_old,theta)
 
-            if figure == True:
-                hinge_loss_history.append(np.mean(hinge_losses))
-                regularizer_history.append(regularizer)
-                distance_history.append(distance)
+            hinge_loss_history.append(np.mean(hinge_losses))
+            regularizer_history.append(regularizer)
+            distance_history.append(distance)
 
             if distance < epsilon:
                 break

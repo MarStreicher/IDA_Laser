@@ -6,7 +6,7 @@ from svm_helper import SvmHelper
 import os
 
 class SvmGridSearch:
-    def __init__(self, dataset, param_grid, kernel_param_grid):
+    def __init__(self, dataset, param_grid=None, kernel_param_grid=None):
         self.dataset = dataset
         self.param_grid = param_grid
         self.kernel_param_grid = kernel_param_grid
@@ -117,20 +117,55 @@ class SvmGridSearch:
         result['elapsed_time'] = elapsed_time
 
         return result
-    
-    def train_and_test(self, selected_kernel, best_params, max_iterations=100, output_dir="../../figures"):
+
+
+    def plot_training_metrics(self, selected_kernel, hinge_loss_history, regularizer_history, distance_history, output_dir, filename):
+        """Plot training metrics for the selected kernel and save the plot to the output directory."""
+        iterations = range(1, len(hinge_loss_history) + 1)
+
+        plt.figure(figsize=(12, 8))
+
+        plt.subplot(3, 1, 1)
+        plt.plot(iterations, hinge_loss_history, label="Hinge Loss", color="blue")
+        plt.xlabel("Iteration")
+        plt.ylabel("Hinge Loss")
+        plt.title(f"{selected_kernel} - Hinge Loss (Best Accuracy)")
+        plt.grid(True)
+
+        plt.subplot(3, 1, 2)
+        plt.plot(iterations, regularizer_history, label="Regularizer", color="green")
+        plt.xlabel("Iteration")
+        plt.ylabel("Regularizer")
+        plt.title(f"{selected_kernel} - Regularizer (Best Accuracy)")
+        plt.grid(True)
+
+        plt.subplot(3, 1, 3)
+        plt.plot(iterations, distance_history, label="Distance (theta old - theta new)", color="red")
+        plt.xlabel("Iteration")
+        plt.ylabel("Distance")
+        plt.title(f"{selected_kernel} - Distance between Theta Updates (Best Accuracy)")
+        plt.grid(True)
+
+        plt.tight_layout()
 
         if not os.path.exists(output_dir):
             os.makedirs(output_dir)
 
+        plot_file = os.path.join(output_dir, filename)
+        plt.savefig(plot_file)
+        plt.close()
+
+        return plot_file
+ 
+    def train_and_test(self, selected_kernel, best_params, max_iterations=100, output_dir="../../figures"):
         accuracies_history = []
         theta_history = []
-        hinge_loss_history = []
-        distance_history = []
-        regularizer_history = []
         best_theta = None
         best_accuracy = 0.0
-        plot_path = output_dir
+
+        best_hinge_loss_history = []
+        best_regularizer_history = []
+        best_distance_history = []
 
         result = {
             'selected_kernel': selected_kernel,
@@ -141,7 +176,6 @@ class SvmGridSearch:
         }
 
         for i in range(max_iterations):
-            print(f"{selected_kernel} - Run {i+1}:")
 
             model_specific_params = {
                 'alpha': best_params['alpha_0'],
@@ -151,23 +185,23 @@ class SvmGridSearch:
             }
 
             if selected_kernel == 'dtw':
-                kernel_function = lambda input, input_copy: SvmHelper.kernel(input, input_copy)
+                kernel_function = lambda input, input_copy: SvmHelper.dtw_kernel(input, input_copy)
             elif selected_kernel == 'polynomial':
-                kernel_function = lambda input, input_copy, **kwargs: SvmHelper.kernel(
+                kernel_function = lambda input, input_copy, **kwargs: SvmHelper.polynomial_kernel(
                     input, input_copy, 
                     alpha=best_params.get('kernel_alpha'), 
                     degree=best_params.get('degree'), 
                     c=best_params.get('c')
-                    )
+                )
             elif selected_kernel == 'rbf':
-                kernel_function = lambda input, input_copy, **kwargs: SvmHelper.kernel(
+                kernel_function = lambda input, input_copy, **kwargs: SvmHelper.rbf_kernel(
                     input, input_copy, 
                     lbda=best_params.get('gamma')
-                    )
+                )
 
             train_result = SvmHelper.regularised_kernel_erm_batch(
-                inputs=dataset.train_inputs,
-                labels=dataset.train_labels,
+                inputs=self.dataset.train_inputs,
+                labels=self.dataset.train_labels,
                 kernel_function=kernel_function, 
                 max_iterations=200,
                 alpha=model_specific_params['alpha'], 
@@ -179,8 +213,8 @@ class SvmGridSearch:
             )
             theta = train_result['theta']
 
-            predictions = SvmHelper.predict_kernel(theta=theta, kernel_function=kernel_function, test_inputs=dataset.test_inputs, train_inputs=dataset.train_inputs)
-            accuracy = accuracy_score(dataset.test_labels, predictions)
+            predictions = SvmHelper.predict_kernel(theta=theta, kernel_function=kernel_function, test_inputs=self.dataset.test_inputs, train_inputs=self.dataset.train_inputs)
+            accuracy = accuracy_score(self.dataset.test_labels, predictions)
             accuracies_history.append(accuracy)
             theta_history.append(theta)
 
@@ -188,43 +222,18 @@ class SvmGridSearch:
                 best_accuracy = accuracy
                 best_theta = theta
 
-                hinge_loss_history = train_result['hinge_loss_history']
-                regularizer_history = train_result['regularizer_history']
-                distance_history = train_result['distance_history']
+                best_hinge_loss_history = train_result['hinge_loss_history']
+                best_regularizer_history = train_result['regularizer_history']
+                best_distance_history = train_result['distance_history']
 
-                iterations = range(1, len(hinge_loss_history) + 1)
-
-                plt.figure(figsize=(12, 8))
-
-                plt.subplot(3, 1, 1)
-                plt.plot(iterations, hinge_loss_history, label="Hinge Loss", color="blue")
-                plt.xlabel("Iteration")
-                plt.ylabel("Hinge Loss")
-                plt.title(f"{selected_kernel} - Hinge Loss over Iterations")
-                plt.grid(True)
-
-                plt.subplot(3, 1, 2)
-                plt.plot(iterations, regularizer_history, label="Regularizer", color="green")
-                plt.xlabel("Iteration")
-                plt.ylabel("Regularizer")
-                plt.title(f"{selected_kernel} - Regularizer over Iterations")
-                plt.grid(True)
-
-                plt.subplot(3, 1, 3)
-                plt.plot(iterations, distance_history, label="Distance (theta old - theta new)", color="red")
-                plt.xlabel("Iteration")
-                plt.ylabel("Distance")
-                plt.title(f"{selected_kernel} - Euclidean Distance between Theta Updates")
-                plt.grid(True)
-
-                plt.tight_layout()
-                plt.show()
-
-        print(accuracies_history)
-
-        plot_file = os.path.join(output_dir, f'{selected_kernel}_training_plot.png')
-        plt.savefig(plot_file)
-        plt.close()  
+        plot_file = self.plot_training_metrics(
+            selected_kernel=selected_kernel,
+            hinge_loss_history=best_hinge_loss_history,
+            regularizer_history=best_regularizer_history,
+            distance_history=best_distance_history,
+            output_dir=output_dir,
+            filename=f'{selected_kernel}_best_accuracy_training_plot.png'
+        )
 
         result['plot_path'] = plot_file
         result['best_accuracy'] = best_accuracy
@@ -233,4 +242,36 @@ class SvmGridSearch:
         result['theta_history'] = theta_history
 
         return result
+
+
+    def test(self, selected_kernel, best_params, best_theta):
+
+        model_specific_params = {
+            'alpha': best_params['alpha_0'],
+            'epsilon': best_params['epsilon'],
+            'lbda': best_params['lambda_value'],
+            'decay': best_params['decay']
+        }
+
+        if selected_kernel == 'dtw':
+            kernel_function = lambda input, input_copy: SvmHelper.dtw_kernel(input, input_copy)
+        elif selected_kernel == 'polynomial':
+            kernel_function = lambda input, input_copy, **kwargs: SvmHelper.polynomial_kernel(
+                input, input_copy, 
+                alpha=best_params.get('kernel_alpha'), 
+                degree=best_params.get('degree'), 
+                c=best_params.get('c')
+            )
+        elif selected_kernel == 'rbf':
+            kernel_function = lambda input, input_copy, **kwargs: SvmHelper.rbf_kernel(
+                input, input_copy, 
+                lbda=best_params.get('gamma')
+            )
+
+        predictions = SvmHelper.predict_kernel(theta=best_theta, kernel_function=kernel_function, test_inputs=self.dataset.test_inputs, train_inputs=self.dataset.train_inputs)
+        accuracy = accuracy_score(self.dataset.test_labels, predictions)
+
+        return accuracy
+
+
 
