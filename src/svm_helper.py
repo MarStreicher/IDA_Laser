@@ -165,11 +165,13 @@ class SvmHelper():
         if K is None:
             raise ValueError("Kernel matrix is None. Ensure create_kernel_matrix is working properly.")
     
-        predictions = np.dot(K, theta)
+        raw_predictions = np.dot(K, theta)
+        predictions = raw_predictions
+
         predictions[predictions >= 0] = 1
         predictions[predictions < 0] = -1
     
-        return predictions
+        return predictions, raw_predictions
 
     @staticmethod
     def plot_metrics(hinge_loss_history, regularizer_history, distance_history, selected_kernel='linear'):

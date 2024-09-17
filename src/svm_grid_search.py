@@ -1,7 +1,8 @@
 import time
+import numpy as np
 from sklearn.model_selection import ParameterGrid
 import matplotlib.pyplot as plt
-from sklearn.metrics import accuracy_score
+from sklearn.metrics import accuracy_score, precision_recall_curve, average_precision_score, roc_curve, roc_auc_score
 from svm_helper import SvmHelper
 import os
 
@@ -27,8 +28,8 @@ class SvmGridSearch:
             raise ValueError("kernel_params cannot be None")
 
         train_result = SvmHelper.regularised_kernel_erm_batch(
-            inputs=self.dataset.train_inputs,
-            labels=self.dataset.train_labels,
+            inputs=self.dataset.train_validate_inputs,
+            labels=self.dataset.train_validate_labels,
             kernel_function=kernel_function,
             max_iterations=100,
             epsilon=params['epsilon'], 
@@ -40,14 +41,14 @@ class SvmGridSearch:
 
         theta = train_result['theta']
 
-        predictions = SvmHelper.predict_kernel(
+        predictions, raw_predictions = SvmHelper.predict_kernel(
             theta=theta,
             kernel_function=kernel_function,
-            test_inputs=self.dataset.test_inputs,
-            train_inputs=self.dataset.train_inputs
+            test_inputs=self.dataset.validate_inputs,
+            train_inputs=self.dataset.train_validate_inputs
         )
 
-        accuracy = accuracy_score(self.dataset.test_labels, predictions)
+        accuracy = accuracy_score(self.dataset.validate_labels, predictions)
 
         if verbose:
             print(f"Accuracy with current params: {accuracy}")
@@ -156,6 +157,22 @@ class SvmGridSearch:
         plt.close()
 
         return plot_file
+
+    def svm_precision_recall_curve(self, labels, raw_predictions):
+        labels = np.where(labels == 1, 1, 0)
+
+        precision, recall, thresholds = precision_recall_curve(labels, raw_predictions)
+        average_precision = average_precision_score(labels, raw_predictions)
+
+        return precision, recall, thresholds, average_precision
+    
+    def svm_roc_curve(self, labels, raw_predictions):
+        labels = np.where(labels == 1, 1, 0)  
+
+        fpr, tpr, thresholds = roc_curve(labels, raw_predictions)
+        auc = roc_auc_score(labels, raw_predictions)
+
+        return fpr, tpr, thresholds, auc
  
     def train_and_test(self, selected_kernel, best_params, max_iterations=100, output_dir="../../figures"):
         accuracies_history = []
@@ -167,12 +184,32 @@ class SvmGridSearch:
         best_regularizer_history = []
         best_distance_history = []
 
+        precision = None
+        recall = None
+        thresholds = None
+        average_precision = None
+
+        fpr = None
+        tpr = None
+        roc_thresholds = None
+        auc = None
+
         result = {
             'selected_kernel': selected_kernel,
             'best_accuracy': best_accuracy,
             'best_theta': best_theta,
             'accuracies_history': accuracies_history,
-            'theta_history': theta_history
+            'theta_history': theta_history,
+            'precision': precision,
+            'recall': recall,
+            'thresholds': thresholds,
+            'hinge_loss_history': best_hinge_loss_history,
+            'regularizer_history': best_regularizer_history,
+            'distance_history': best_distance_history,
+            'fpr': fpr,
+            'tpr': tpr,
+            'roc_thresholds': roc_thresholds,
+            'auc': auc
         }
 
         for i in range(max_iterations):
@@ -213,7 +250,7 @@ class SvmGridSearch:
             )
             theta = train_result['theta']
 
-            predictions = SvmHelper.predict_kernel(theta=theta, kernel_function=kernel_function, test_inputs=self.dataset.test_inputs, train_inputs=self.dataset.train_inputs)
+            predictions, raw_predictions = SvmHelper.predict_kernel(theta=theta, kernel_function=kernel_function, test_inputs=self.dataset.test_inputs, train_inputs=self.dataset.train_inputs)
             accuracy = accuracy_score(self.dataset.test_labels, predictions)
             accuracies_history.append(accuracy)
             theta_history.append(theta)
@@ -235,14 +272,27 @@ class SvmGridSearch:
             filename=f'{selected_kernel}_best_accuracy_training_plot.png'
         )
 
+        precision, recall, thresholds, average_precision = self.svm_precision_recall_curve(self.dataset.test_labels, raw_predictions)
+        fpr, tpr, roc_thresholds, auc = self.svm_roc_curve(self.dataset.test_labels, raw_predictions)
+
         result['plot_path'] = plot_file
         result['best_accuracy'] = best_accuracy
         result['best_theta'] = best_theta
         result['accuracies_history'] = accuracies_history
         result['theta_history'] = theta_history
+        result['precision'] = precision
+        result['recall'] = recall
+        result['thresholds'] = thresholds
+        result['average_precision'] = average_precision
+        result['hinge_loss_history'] = best_hinge_loss_history
+        result['regularizer_history'] = best_regularizer_history
+        result['distance_history'] = best_distance_history
+        result['fpr'] = fpr
+        result['tpr'] = tpr
+        result['roc_thresholds'] = roc_thresholds
+        result['auc'] = auc
 
         return result
-
 
     def test(self, selected_kernel, best_params, best_theta):
 
@@ -268,10 +318,11 @@ class SvmGridSearch:
                 lbda=best_params.get('gamma')
             )
 
-        predictions = SvmHelper.predict_kernel(theta=best_theta, kernel_function=kernel_function, test_inputs=self.dataset.test_inputs, train_inputs=self.dataset.train_inputs)
+        predictions, raw_predictions = SvmHelper.predict_kernel(theta=best_theta, kernel_function=kernel_function, test_inputs=self.dataset.test_inputs, train_inputs=self.dataset.train_inputs)
         accuracy = accuracy_score(self.dataset.test_labels, predictions)
 
         return accuracy
+    
 
 
 

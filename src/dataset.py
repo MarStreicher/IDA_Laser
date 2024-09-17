@@ -8,7 +8,7 @@ import pickle
 import os
 
 class BaseDataset(Dataset):
-    def __init__(self, mat_data, input_key, label_key = None):
+    def __init__(self, mat_data, input_key, label_key = None, validate = False):
         """
         mat_data: Loaded data in dictionary-like format.
         input_key: Key to retrieve input data.
@@ -22,7 +22,8 @@ class BaseDataset(Dataset):
 
         file_path = '../../data_split_indices.pkl'
         print(f"Checking path: {file_path}")
-        print(f"Path exists: {os.path.exists(file_path)}")       
+        print(f"Path exists: {os.path.exists(file_path)}")
+
         if os.path.exists('../../data_split_indices.pkl'):
             with open(file_path, 'rb') as file:
                 split_data = pickle.load(file)
@@ -47,6 +48,40 @@ class BaseDataset(Dataset):
         else:
             self.train_labels = None
             self.test_labels = None
+        
+        if validate == True:
+
+            validation_size = int(0.2*len(self.train_inputs))
+            train_validation_size = len(self.train_inputs) - validation_size
+
+            file_path = '../../data_split_indices_validation.pkl'
+            print(f"Checking path: {file_path}")
+            print(f"Path exists: {os.path.exists(file_path)}")
+
+            if os.path.exists('../../data_split_indices_validation.pkl'):
+                with open(file_path, 'rb') as file:
+                    split_data = pickle.load(file)
+
+                    self.train_validate_indices = split_data['train_validate_indices']
+                    self.validate_indices = split_data['validate_indices']
+            else:
+                train_validate_dataset, validate_dataset = random_split(self.train_inputs, [train_validation_size, validation_size])
+
+                self.train_validate_indices = train_validate_dataset.indices
+                self.validate_indices = validate_dataset.indices
+
+                with open('../../data_split_indices_validation.pkl', 'wb') as f:
+                    pickle.dump({'train_validate_indices': self.train_validate_indices, 'validate_indices': self.validate_indices}, f)
+
+            self.train_validate_inputs = self.inputs[self.train_validate_indices]
+            self.validate_inputs = self.inputs[self.validate_indices]
+
+            if self.labels is not None:
+                self.train_validate_labels = self.labels[self.train_validate_indices]
+                self.validate_labels = self.labels[self.validate_indices]
+            else:
+                self.train_validate_labels = None
+                self.validate_labels = None
 
     def __len__(self):
         """Calculate the length of the input data."""
